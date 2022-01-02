@@ -6,7 +6,15 @@
 #include <pthread.h>
 #include <unistd.h>
 
+#define NUMBER_OF_PHILOSOPHERS 8
+#define NUMBER_OF_TABLE 10
 
+double priceTableOpen=99.90;
+double priceTableReorganize=19.90;
+double priceRice=20;
+double riceTableAmount=2000;
+double eatingRiceQuantity=100;
+double price;
 
 struct Philosopher
 {
@@ -34,11 +42,9 @@ int is_finished()
 	sem_wait(&global_mutex);
 	counter = NotEatenCount;
 	sem_post(&global_mutex);	
-        /* return true, if NotEatenCount = 0 */
-	
 
 	return counter==0;
-	//return counter --> causes starvation
+
 }
 
 void* philosopher_thread(void *argument)
@@ -48,78 +54,45 @@ void* philosopher_thread(void *argument)
 
 	while(again)
 	{
-		/* think at start */
+		srand(time(NULL));
 		printf("Philosopher %d is Thinking\n", philosopher->number);
-		/* think for some time */
-		/* There is delay from 0.5 to 3.5 second */
-		usleep(500*(1000 + 100*(rand() % 60)));
-		
-		/* after thinking start to eat */
+		sleep(rand() % 5 + 1);
 		printf("Philosopher %d is trying to eat...\n", philosopher->number);
-
-		/* try to get left fork 
-                 * There is used sem_trywait, not sem_wait.
-		 * it makes possible to resolve deadlocks
-                 */
+		price+=priceTableOpen;
+		
+		
 		if (sem_trywait(&forks[philosopher->leftForkIndex].mutex)==0)
 		{
-			/* if philosohers gets left fork successfully */
-			/* generate random waiting time for right fork */			
-			int waiting_times = 10 + rand() % 50; /* returns number in [10..59] interval */
-
-			/* check waiting time for right fork is ot expired */
+			price+=(priceRice*2);
+			int waiting_times = rand() % 5 + 1;
+	
 			while(waiting_times>0)
 			{
-				/* try to get right form
-		                 * There is used sem_trywait, not sem_wait.
-				 * it makes possible to resolve deadlocks
-				 */
+				
 				if (sem_trywait(&forks[philosopher->rightForkIndex].mutex)==0)
-				{	
-					/* philisopehrs gets 2 forks!*/			
+				{		
 					printf("Philosopher %d is Eating\n", philosopher->number);
 
-					/* check this philisopers eaten before at least once*/
+
 					if (!philosopher->eatenTimes)
-					{
-						/* if didn't eat, 
-						 * decrement "Not Eaten Philosophers Count
-						 */
+					{	
 						sem_wait(&global_mutex);
 						NotEatenCount--;
 						sem_post(&global_mutex);
 					}
 
-					/* increments eaten time for this philosopehers */
 					philosopher->eatenTimes++;
 
-					/* eat for some time */
-					/* There is delay from 0.5 to 3.5 second */
-					usleep(500*(1000 + 100*(rand() % 60)));
+					sleep(rand() % 5 + 1);
 					
-					/* put left fork on table */					
 					sem_post(&forks[philosopher->rightForkIndex].mutex);
 
-					/* if it's here, it means waiting_times was greater than 0 
-					 * Therefhore make waiting_times negative in order to mark 
-					 * this philosopers eaten succesfuuly at this time 
-					 */
 					waiting_times =- waiting_times;
 				} else {
-					/* Cannot get right fork
-					 * decrements timer for waiting right fork
-					 */
 					waiting_times--;
-					/* delay for 0.1 sec*/
-					usleep(100000);					
-					/* waiting_times has [10..59] value 
-					 * Therefore philosopher waits from 1 to 6 seconds for right fork
-					 */
+					sleep(rand() % 5 + 1);								
 				}
 			}
-
-			/* if waiting_times is 0, it means philosopers cannot get right fork and 
-             * waiting time is expired - he will release left fork, despite he is hungry */
 
 			if (waiting_times==0)
 			{
@@ -128,90 +101,70 @@ void* philosopher_thread(void *argument)
 			}
 			/* put left fork on table */
 			sem_post(&forks[philosopher->leftForkIndex].mutex);
+			riceTableAmount-=eatingRiceQuantity;
 		} else {
 			printf("Philosopher %d cannot eat at this moment...\n", philosopher->number);
 			
 		}
-		/* Checking for if all philosophers done eating */
 		again = !is_finished();
 	}
 	
-	
+	printf("Price : %d",price);
 }
 
 int main(int argc, char* argv[])
 {
-	struct Philosopher* philosophers;
-	int i, count = 5;
+	int groupNum;
+	printf("Please write a group number\n");
+	scanf("%d",&groupNum);
+	printf("Group Num :\n",groupNum);
+	int i;	
 
-	/* check command line arguments */
-	if (argc>=2)
-                /* gets number of philosophers from command line*/
-		count = atoi(argv[1]);
+	struct Philosopher* philosophers = (struct Philosopher*) malloc(sizeof(struct Philosopher) * NUMBER_OF_PHILOSOPHERS);
 
-	srand((unsigned int)time(NULL));
-	/* if arguments is invalid */ 
-	if (count<2 || count>1000)
-                /* replace with 5 */
-		count = 5;
+	forks = (struct Fork*)malloc(sizeof(struct Fork) * NUMBER_OF_PHILOSOPHERS);
 
-	/* create array of structures for philosophers */
-
-	philosophers = (struct Philosopher*) malloc(sizeof(struct Philosopher) * count);
-
-	/* create array of structures for forks */
-	forks = (struct Fork*)malloc(sizeof(struct Fork) * count);
-
-	/* create global mutex in order to determinate all philophers eaten at least 1 time */
 	sem_init(&global_mutex,0,1);
 
-        /* at start, no philosophers eaten */
-	NotEatenCount = count;
 
-	for(i=0; i<count; i++)
+	NotEatenCount = NUMBER_OF_PHILOSOPHERS;
+
+	for(i=0; i<NUMBER_OF_PHILOSOPHERS; i++)
 	{
-		/* initialzied mutex of each fork */
 	        sem_init(&forks[i].mutex,0,1);
 
-                
-		/* Each philosopher not yet eaten */
 		philosophers[i].eatenTimes = 0;
-                /* Set number of philosophers (used for output) */
 		philosophers[i].number = i + 1;
 
-                /* Set index of left fork */
+
 		philosophers[i].leftForkIndex = i;
 
-                /* Set index of rigth fork 
-                 * There indices will be used later
-                 */
-		if (i+1==count)
+		if (i+1==NUMBER_OF_PHILOSOPHERS)
 			philosophers[i].rightForkIndex = 0;
 		else
 			philosophers[i].rightForkIndex = i+1;
 	}
 
-        /* run philosophers thread */
-    	for(i=0;i<count;i++)
+    	for(i=0;i<NUMBER_OF_PHILOSOPHERS;i++)
         	pthread_create(&philosophers[i].thread_id, NULL, philosopher_thread, &philosophers[i]);
 
 
-        /* check is finished */
+
 	while(!is_finished())
 		usleep(100);
 
-        /* finisgh all threads */
-	for(i=0;i<count;i++)
+
+	for(i=0;i<NUMBER_OF_PHILOSOPHERS;i++)
 	     pthread_join(philosophers[i].thread_id, NULL);
 
-        /* prints statistic */
+
 	printf("\nStatistics:\n");
-	for(i=0;i<count;i++){
+	for(i=0;i<NUMBER_OF_PHILOSOPHERS;i++){
 
 		printf("Philosopher %d eaten for %d times\n", philosophers[i].number, philosophers[i].eatenTimes);
     }
     	
-        /* free all dynamically allocated memory */
+
 	free(forks);
 	free(philosophers);		
 	return 0;	
