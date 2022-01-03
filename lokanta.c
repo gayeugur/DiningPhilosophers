@@ -92,7 +92,7 @@ void* philosopher_thread(void *argument)
 
 			if (waiting_times==0)
 			{
-				printf("Philosopher %d cannot take second fork...\n", philosopher->number);
+				printf("Philosopher %d cannot take second fork...\n ", philosopher->number);
 				
 			}
 			/* put left fork on table */
