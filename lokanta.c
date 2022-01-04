@@ -15,7 +15,8 @@ struct Philosopher
 	int number;
 	int leftForkIndex;
 	int rightForkIndex;
-	int eatenTimes;	
+	int eatenTimes;
+	int food;	
 	pthread_t thread_id;
 };
 
@@ -43,12 +44,8 @@ int is_finished()
 
 void* philosopher_thread(void *argument)
 {	
-	double priceTableOpen=99.90;
-	double priceTableReorganize=19.90;
-	double rice=20;
-	double price=0;
-	price+=priceTableOpen;
-	price+=(rice*2);
+
+
 	struct Philosopher* philosopher = (struct Philosopher*)argument;
 	int again = 1;
 		
@@ -68,7 +65,8 @@ void* philosopher_thread(void *argument)
 				if (sem_trywait(&forks[philosopher->rightForkIndex].mutex)==0)
 				{		
 					printf("Philosopher %d is Eating\n", philosopher->number);
-
+					philosopher->food=1;
+					
 
 					if (!philosopher->eatenTimes)
 					{	
@@ -92,38 +90,46 @@ void* philosopher_thread(void *argument)
 
 			if (waiting_times==0)
 			{
-				printf("Philosopher %d cannot take second fork...\n ", philosopher->number);
+				printf("Philosopher %d cannot take second fork...\n", philosopher->number);
 				
 			}
 			/* put left fork on table */
 			sem_post(&forks[philosopher->leftForkIndex].mutex);
 		} else {
 			printf("Philosopher %d cannot eat at this moment...\n", philosopher->number);
+			philosopher->food=0;
 			//tekrarla
-			price+=priceTableReorganize;
-			again=1;
+
 			
 		}
+		
 		again = !is_finished();
 		
+		
 	}
-		printf("Price : %.2f",price);
+	
 	
 }
 
-double priceRice=20;
-double riceTableAmount=2000;
-double eatingRiceQuantity=100;
 
 int main(int argc, char* argv[])
-{
+{	double priceTableOpen=99.90;
+	double priceTableReorganize=19.90;
+	double rice=20;
+	double riceTableAmount=2000;
+double eatingRiceQuantity=100;
 
 	int groupNum;
-
+	
 	printf("Please write a group number\n");
 	scanf("%d",&groupNum);
 	printf("Group Num :\n",groupNum);
+	if(groupNum*NUMBER_OF_PHILOSOPHERS>NUMBER_OF_PHILOSOPHERS*NUMBER_OF_TABLE){
+	// kitleme
+	}
 	
+	
+	double price;
 	
 	int i,j;	
 
@@ -135,12 +141,13 @@ int main(int argc, char* argv[])
 
 
 	NotEatenCount = NUMBER_OF_PHILOSOPHERS;
-	for(j=0; j<groupNum; j++){
-	sleep(5);
-	printf("------ table[%d] -----",j);
-		for(i=0; i<NUMBER_OF_PHILOSOPHERS; i++)
+	for(j=0; j<groupNum; j++){//table donulur
+		price+=priceTableOpen;
+		price+=(2*rice);
+		riceTableAmount=2000;
+		for(i=0; i<NUMBER_OF_PHILOSOPHERS; i++)//filozoflar
 		{
-	
+		riceTableAmount=riceTableAmount-eatingRiceQuantity;
 	        sem_init(&forks[i].mutex,0,1);
 
 		philosophers[i].eatenTimes = 0;
@@ -155,7 +162,11 @@ int main(int argc, char* argv[])
 			philosophers[i].rightForkIndex = i+1;
 		}
 		
+		
 	}
+	if(philosophers[j].food==0){
+		printf("yeniedn");
+		}
 	}
 	
     	for(i=0;i<NUMBER_OF_PHILOSOPHERS;i++)
@@ -177,7 +188,8 @@ int main(int argc, char* argv[])
 		printf("Philosopher %d eaten for %d times\n", philosophers[i].number, philosophers[i].eatenTimes);
     }
     	
-
+printf("Price : %.2f",price);
+	printf("Kalan rice : %.2f",riceTableAmount);
 	free(forks);
 	free(philosophers);		
 	return 0;	
