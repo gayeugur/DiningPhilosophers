@@ -26,6 +26,11 @@ struct Fork
 	sem_t mutex;
 };
 
+struct Table{
+	int tableNumber;
+	int totalTableNumber;
+};
+
 struct Fork* forks;
 sem_t lock;
 int NotEatenCount = 0;
@@ -73,6 +78,9 @@ void* philosopher_thread(void *argument)
 						sem_wait(&lock);
 						NotEatenCount--;
 						sem_post(&lock);
+						
+						//sistem sıfırlanmalı
+					
 					}
 
 					philosopher->eatenTimes++;
@@ -117,7 +125,10 @@ int main(int argc, char* argv[])
 	double priceTableReorganize=19.90;
 	double rice=20;
 	double riceTableAmount=2000;
-double eatingRiceQuantity=100;
+	double eatingRiceQuantity=100;
+	double pirinc=100;
+	double tpirinc=2000;
+
 
 	int groupNum;
 	
@@ -136,7 +147,10 @@ double eatingRiceQuantity=100;
 	struct Philosopher* philosophers = (struct Philosopher*) malloc(sizeof(struct Philosopher) * NUMBER_OF_PHILOSOPHERS);
 
 	forks = (struct Fork*)malloc(sizeof(struct Fork) * NUMBER_OF_PHILOSOPHERS);
-
+	
+	struct Table* table = (struct Table*) malloc(sizeof(struct Table) * groupNum);
+	table->totalTableNumber=groupNum;
+	
 	sem_init(&lock,0,(groupNum*NUMBER_OF_PHILOSOPHERS)); //restaurant kapasitesi kadar kilitlenme yapılır
 
 
@@ -186,8 +200,11 @@ double eatingRiceQuantity=100;
 	for(i=0;i<NUMBER_OF_PHILOSOPHERS;i++){
 		
 		printf("Philosopher %d eaten for %d times\n", philosophers[i].number, philosophers[i].eatenTimes);
+		tpirinc-=(philosophers[i].eatenTimes*pirinc);
     }
-    	
+    
+    
+    printf("Toplam Pirinc : %.2f",tpirinc);	
 printf("Price : %.2f",price);
 	printf("Kalan rice : %.2f",riceTableAmount);
 	free(forks);
