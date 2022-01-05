@@ -27,16 +27,16 @@ struct Fork
 };
 
 struct Fork* forks;
-sem_t global_mutex;
+sem_t lock;
 int NotEatenCount = 0;
 
 
 int is_finished()
 {
 	int counter = 0;
-	sem_wait(&global_mutex);
+	sem_wait(&lock);
 	counter = NotEatenCount;
-	sem_post(&global_mutex);	
+	sem_post(&lock);	
 
 	return counter==0;
 
@@ -70,9 +70,9 @@ void* philosopher_thread(void *argument)
 
 					if (!philosopher->eatenTimes)
 					{	
-						sem_wait(&global_mutex);
+						sem_wait(&lock);
 						NotEatenCount--;
-						sem_post(&global_mutex);
+						sem_post(&lock);
 					}
 
 					philosopher->eatenTimes++;
@@ -137,7 +137,7 @@ double eatingRiceQuantity=100;
 
 	forks = (struct Fork*)malloc(sizeof(struct Fork) * NUMBER_OF_PHILOSOPHERS);
 
-	sem_init(&global_mutex,0,1);
+	sem_init(&lock,0,(groupNum*NUMBER_OF_PHILOSOPHERS)); //restaurant kapasitesi kadar kilitlenme yapılır
 
 
 	NotEatenCount = NUMBER_OF_PHILOSOPHERS;
