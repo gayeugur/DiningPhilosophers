@@ -139,6 +139,7 @@ int main(int argc, char* argv[])
 	
 	 //restaurant kapasitesi kadar kilitlenme yapılır
 	//sem_wait(&lock);
+	sem_init(&lock,0,NUMBER_OF_TABLE);
 	
 	NotEatenCount = NUMBER_OF_PHILOSOPHERS;
 	for(j=0; j<groupNum; j++){//table donulur
