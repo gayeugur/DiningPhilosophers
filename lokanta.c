@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -12,97 +11,88 @@
 
 struct Philosopher
 {
-	int number;
-	int leftForkIndex;
-	int rightForkIndex;
-	int eatenTimes;
-	int food;	
-	pthread_t thread_id;
+	int id;
+	int solCatal;
+	int sagCatal;
+	int eatTimes;
+	int tazelemeSayisi;	
+	pthread_t thread;
 };
 
-struct Fork
+struct CatalM
 {
-	int index;
 	sem_t mutex;
 };
 
 struct Table{
-	int tableNumber;
 	int totalTableNumber;
-	int tazeleme;
 };
 
-struct Fork* forks;
+struct CatalM* forks;
 sem_t lock;
-int NotEatenCount = 0;
+int yemeyen = 0;
+int taz=0;
 
 int is_finished()
 {
-	int counter = 0;
+	int cont = 0;
 	sem_wait(&lock);
-	counter = NotEatenCount;
+	cont = yemeyen;
 	sem_post(&lock);	
-
-	return counter==0;
+	taz++;
+	return cont==0;
 
 }
+double tpirinc=2000;
 
 void* philosopher_thread(void *argument)
 {	
+	int count=0;
+
+	int again = 1;	
+	double pirinc=100;
 	
 	struct Philosopher* philosopher = (struct Philosopher*)argument;
-	int again = 1;
-		
-	while(again)
-	{
-		srand(time(NULL));
-		printf("Philosopher %d is Thinking\n", philosopher->number);
-		sleep(rand() % 5 + 1);
-				
-		
-		if (sem_trywait(&forks[philosopher->leftForkIndex].mutex)==0)
-		{
-			int waiting_times = rand() % 5 + 1;
 	
-			while(waiting_times>0){	
-				if (sem_trywait(&forks[philosopher->rightForkIndex].mutex)==0)
-				{		
-					printf("Philosopher %d is Eating\n", philosopher->number);
-					philosopher->food=1;
-					
+	while(again)
+	{	
+	count++;
+		srand(time(NULL));
+		printf("Philosopher %d is Thinking\n", philosopher->id);	
+		int time = rand() % 5 + 1;
+		sleep(time);
+				
+		if (sem_trywait(&forks[philosopher->solCatal].mutex)==0 && sem_trywait(&forks[philosopher->sagCatal].mutex)==0)
+		{
+			while(time>0){	
+					if(tpirinc>100){
+					printf("Philosopher %d is Eating\n", philosopher->id);
+					}
 
-					if (!philosopher->eatenTimes)
+					if (!philosopher->eatTimes)
 					{	
 						sem_wait(&lock);
-						NotEatenCount--;
+						yemeyen--;
 						sem_post(&lock);
 					
 					}
 
-					philosopher->eatenTimes++;
-
+					philosopher->eatTimes++;
 				//	sleep(rand() % 5 + 1);
 					
-					sem_post(&forks[philosopher->rightForkIndex].mutex);
+					sem_post(&forks[philosopher->sagCatal].mutex);
 
-					waiting_times =- waiting_times;
-				} else {
-					waiting_times--;
-					//sleep(rand() % 5 + 1);								
-				}
-			}
+					time =- time;
+				} 
+				sem_post(&forks[philosopher->solCatal].mutex);
+		}else {
+			printf("Philosopher %d not eat \n", philosopher->id);
 
-							
-			/* put left fork on table */
-			sem_post(&forks[philosopher->leftForkIndex].mutex);
-		} else {
-			printf("Philosopher %d cannot eat at this moment...\n", philosopher->number);
-			philosopher->food=0;
-
-			
 		}
-		
 		again = !is_finished();
+		
+		
+		
 		
 	}
 	
@@ -112,27 +102,30 @@ void* philosopher_thread(void *argument)
 
 int main(int argc, char* argv[])
 {	
+
 	double priceTableOpen=99.90;
 	double priceTableReorganize=19.90;
 	double rice=20;
-	double riceTableAmount=2000;
-	double eatingRiceQuantity=100;
+
 	double pirinc=100;
 	double tpirinc=2000;
-	int groupNum;
+	
 	double price;
+	int tazeleme;
 	
 	int i,j;
-	int tekrar=0;
 	
-	while(tekrar==0){	
+	int groupNum;	
 	printf("Please write a group number\n");
 	scanf("%d",&groupNum);
 	
+	int a=groupNum*NUMBER_OF_PHILOSOPHERS;
 
-	struct Philosopher* philosophers = (struct Philosopher*) malloc(sizeof(struct Philosopher) * NUMBER_OF_PHILOSOPHERS);
+	if(groupNum<NUMBER_OF_TABLE){
+	
+	struct Philosopher* philosophers = (struct Philosopher*) malloc(sizeof(struct Philosopher) * a);
 
-	forks = (struct Fork*)malloc(sizeof(struct Fork) * NUMBER_OF_PHILOSOPHERS);
+	forks = (struct CatalM*)malloc(sizeof(struct CatalM) * a);
 	
 	struct Table* table = (struct Table*) malloc(sizeof(struct Table) * groupNum);
 	table->totalTableNumber=groupNum;
@@ -141,78 +134,72 @@ int main(int argc, char* argv[])
 	//sem_wait(&lock);
 	sem_init(&lock,0,NUMBER_OF_TABLE);
 	
-	NotEatenCount = NUMBER_OF_PHILOSOPHERS;
-	for(j=0; j<groupNum; j++){//table donulur
-		for(i=0; i<NUMBER_OF_PHILOSOPHERS; i++)//filozoflar
+	yemeyen = a;
+	for(i=0; i<a; i++)//filozoflar
 		{
 		
 	        sem_init(&forks[i].mutex,0,1);
 
-		philosophers[i].eatenTimes = 0;
-		philosophers[i].number = i + 1;
+		philosophers[i].eatTimes = 0;
+		philosophers[i].id = i + 1;
 
 
-		philosophers[i].leftForkIndex = i;
+		philosophers[i].solCatal = i;
 
-		if (i+1==NUMBER_OF_PHILOSOPHERS){
-			philosophers[i].rightForkIndex = 0;
+		if (i+1==a){
+			philosophers[i].sagCatal = 0;
 		}else{
-			philosophers[i].rightForkIndex = i+1;
+			philosophers[i].sagCatal = i+1;
 		}
 		
+		pthread_create(&philosophers[i].thread, NULL, philosopher_thread, &philosophers[i]);
+	 	
 		
 		}
-					
-		
-	
-	}
-	
-    	for(i=0;i<NUMBER_OF_PHILOSOPHERS;i++)
-        	pthread_create(&philosophers[i].thread_id, NULL, philosopher_thread, &philosophers[i]);
 
-
-
-	while(!is_finished())
-		usleep(100);
-
-
-	for(i=0;i<NUMBER_OF_PHILOSOPHERS;i++)
-	     pthread_join(philosophers[i].thread_id, NULL);
+	for(i=0;i<a;i++){
+	     pthread_join(philosophers[i].thread, NULL);
+}
 
 
 	printf("\nStatistics:\n");
-	int tazeleme=table->tazeleme;
-	for(j=0; j<groupNum; j++){
+
+	//for(j=0; j<groupNum; j++){
 	price+=priceTableOpen;
 	price+=(2*rice);
-	for(i=0;i<NUMBER_OF_PHILOSOPHERS;i++){
-		
-		printf("Philosopher %d eaten for %d times\n", philosophers[i].number, philosophers[i].eatenTimes);
-		tpirinc-=(philosophers[i].eatenTimes*100);
-		if(tpirinc==0){
-		int a=0; 
-			while(philosophers[a].eatenTimes==0){
-				tekrar=0;
-				tazeleme+=1;
-				price+=priceTableReorganize;
-				price+=(2*rice);
-				a++;
-			}
-			
-		}else{
-			tekrar=1;
+	int count=0;
+	int n=1;
+	for(i=0;i<a;i++){
+		count++;
+		if(tpirinc>100){
+			printf("Philosopher %d eaten for %d times\n", philosophers[i].id, philosophers[i].eatTimes);
+			tpirinc-=(philosophers[i].eatTimes*100);
 		}
-    }
-    printf("table [%d] : tazeleme sayısı  %d\n",j,tazeleme);
-    printf("table [%d] : Yenilen Toplam Pirinc : %.2f\n",j ,2000-tpirinc);
-    printf("table [%d] : Price  : %.2f\n",j, price);
-    tpirinc=2000;
-    price=0.0;
-    }
-    		
-  	
+    			
+    			if(yemeyen!=0 && tpirinc<100)
+    			{
+    				printf("tazeleme var");
+    				tazeleme++;
+    				price+=priceTableReorganize*taz;
+				price+=(2*rice*taz);
+    			}
+    		  	if(count==8){
+    		  	printf("table [%d] : tazeleme sayısı  %d\n",n,tazeleme);
+    			printf("table [%d] : Yenilen Toplam Pirinc : %.2f\n",n ,2000-tpirinc);
+    			printf("table [%d] : Price  : %.2f\n",n, price);
+    			n++;
+    			count=0;
+    			tpirinc=2000;
+    			    		  	
+    		  	}
+
+    	}
+    	
+  	free(table);
 	free(forks);
 	free(philosophers);
+	}else{
+	printf("10 dan fazla işlm olamazzz");
 	}		
 	return 0;	
 }
